@@ -212,6 +212,7 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
   _captureSession = [[AVCaptureSession alloc] init];
 
   _captureDevice = [AVCaptureDevice deviceWithUniqueID:cameraName];
+
   NSError *localError = nil;
   _captureVideoInput = [AVCaptureDeviceInput deviceInputWithDevice:_captureDevice
                                                              error:&localError];
@@ -251,6 +252,10 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
 
 - (void)start {
   [_captureSession startRunning];
+  [_captureDevice lockForConfiguration:nil];
+  if( [_captureDevice isFocusModeSupported:AVCaptureFocusModeAutoFocus] )    {
+          [_captureDevice setFocusMode:AVCaptureFocusModeContinuousAutoFocus ];
+  }
 }
 
 - (void)stop {
