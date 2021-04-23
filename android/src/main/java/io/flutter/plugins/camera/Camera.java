@@ -112,16 +112,13 @@ public class Camera {
                 };
         orientationEventListener.enable();
         CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraName);
-        StreamConfigurationMap streamConfigurationMap =
-                characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        StreamConfigurationMap streamConfigurationMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
         //noinspection ConstantConditions
         sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         //noinspection ConstantConditions
-        isFrontFacing =
-                characteristics.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_FRONT;
+        isFrontFacing = characteristics.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_FRONT;
         ResolutionPreset preset = ResolutionPreset.valueOf(resolutionPreset);
-        recordingProfile =
-                CameraUtils.getBestAvailableCamcorderProfileForResolutionPreset(cameraName, preset);
+        recordingProfile = CameraUtils.getBestAvailableCamcorderProfileForResolutionPreset(cameraName, preset);
         captureSize = new Size(recordingProfile.videoFrameWidth, recordingProfile.videoFrameHeight);
         previewSize = computeBestPreviewSize(cameraName, preset);
     }
@@ -141,14 +138,10 @@ public class Camera {
 
     @SuppressLint("MissingPermission")
     public void open(@NonNull final Result result) throws CameraAccessException {
-        pictureImageReader =
-                ImageReader.newInstance(
-                        captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 2);
+        pictureImageReader = ImageReader.newInstance(captureSize.getWidth(), captureSize.getHeight(), ImageFormat.JPEG, 2);
 
         // Used to steam image byte data to dart side.
-        imageStreamReader =
-                ImageReader.newInstance(
-                        previewSize.getWidth(), previewSize.getHeight(), ImageFormat.YUV_420_888, 2);
+        imageStreamReader = ImageReader.newInstance(previewSize.getWidth(), previewSize.getHeight(), ImageFormat.YUV_420_888, 2);
         cameraManager.openCamera(
                 cameraName,
                 new CameraDevice.StateCallback() {
@@ -227,8 +220,7 @@ public class Camera {
         final File file = new File(filePath);
 
         if (file.exists()) {
-            result.error(
-                    "fileExists", "File at path '" + filePath + "' already exists. Cannot overwrite.", null);
+            result.error("fileExists", "File at path '" + filePath + "' already exists. Cannot overwrite.", null);
             return;
         }
 
@@ -245,8 +237,7 @@ public class Camera {
                 null);
 
         try {
-            final CaptureRequest.Builder captureBuilder =
-                    cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(pictureImageReader.getSurface());
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getMediaOrientation());
 
@@ -278,8 +269,7 @@ public class Camera {
         }
     }
 
-    private void createCaptureSession(int templateType, Surface... surfaces)
-            throws CameraAccessException {
+    private void createCaptureSession(int templateType, Surface... surfaces) throws CameraAccessException {
         createCaptureSession(templateType, null, surfaces);
     }
 
@@ -313,13 +303,13 @@ public class Camera {
                     public void onConfigured(@NonNull CameraCaptureSession session) {
                         try {
                             if (cameraDevice == null) {
-                                dartMessenger.send(
-                                        DartMessenger.EventType.ERROR, "The camera was closed during configuration.");
+                                dartMessenger.send(DartMessenger.EventType.ERROR, "The camera was closed during configuration.");
                                 return;
                             }
                             cameraCaptureSession = session;
-                            captureRequestBuilder.set(
-                                    CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_MACRO);
                             if (recordingVideo) {
                                 captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
                             }
