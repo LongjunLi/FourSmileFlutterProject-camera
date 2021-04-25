@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
-public class Camera {
+public class Camera extends CameraCaptureSession.StateCallback {
     private final SurfaceTextureEntry flutterTexture;
     private final CameraManager cameraManager;
     private final OrientationEventListener orientationEventListener;
@@ -71,6 +71,37 @@ public class Camera {
     private boolean recordingVideo;
     private CamcorderProfile recordingProfile;
     private int currentOrientation = ORIENTATION_UNKNOWN;
+    private Runnable onSuccessCallback;
+
+    @Override
+    public void onConfigured(@NonNull CameraCaptureSession session) {
+        try {
+            if (cameraDevice == null) {
+                dartMessenger.send(DartMessenger.EventType.ERROR, "The camera was closed during configuration.");
+                return;
+            }
+            cameraCaptureSession = session;
+            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_MACRO);
+            if (recordingVideo) {
+                captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+            }
+            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
+            if (onSuccessCallback != null) {
+                onSuccessCallback.run();
+            }
+        } catch (CameraAccessException | IllegalStateException | IllegalArgumentException e) {
+            dartMessenger.send(DartMessenger.EventType.ERROR, e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+        dartMessenger.send(DartMessenger.EventType.ERROR, "Failed to configure camera session.");
+    }
 
     // Mirrors camera.dart
     public enum ResolutionPreset {
@@ -274,11 +305,11 @@ public class Camera {
     }
 
     private void createCaptureSession(
-            int templateType, Runnable onSuccessCallback, Surface... surfaces)
+            int templateType, Runnable callback, Surface... surfaces)
             throws CameraAccessException {
         // Close any existing capture session.
         closeCaptureSession();
-
+        onSuccessCallback = callback;
         // Create a new capture builder.
         captureRequestBuilder = cameraDevice.createCaptureRequest(templateType);
 
@@ -296,39 +327,6 @@ public class Camera {
             }
         }
 
-        // Prepare the callback
-        CameraCaptureSession.StateCallback callback =
-                new CameraCaptureSession.StateCallback() {
-                    @Override
-                    public void onConfigured(@NonNull CameraCaptureSession session) {
-                        try {
-                            if (cameraDevice == null) {
-                                dartMessenger.send(DartMessenger.EventType.ERROR, "The camera was closed during configuration.");
-                                return;
-                            }
-                            cameraCaptureSession = session;
-                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
-                            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_MACRO);
-                            if (recordingVideo) {
-                                captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
-                            }
-                            cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
-                            if (onSuccessCallback != null) {
-                                onSuccessCallback.run();
-                            }
-                        } catch (CameraAccessException | IllegalStateException | IllegalArgumentException e) {
-                            dartMessenger.send(DartMessenger.EventType.ERROR, e.getMessage());
-                        }
-                    }
-
-                    @Override
-                    public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                        dartMessenger.send(
-                                DartMessenger.EventType.ERROR, "Failed to configure camera session.");
-                    }
-                };
-
         // Start the session
         if (VERSION.SDK_INT >= VERSION_CODES.P) {
             // Collect all surfaces we want to render to.
@@ -337,13 +335,13 @@ public class Camera {
             for (Surface surface : remainingSurfaces) {
                 configs.add(new OutputConfiguration(surface));
             }
-            createCaptureSessionWithSessionConfig(configs, callback);
+            createCaptureSessionWithSessionConfig(configs, this);
         } else {
             // Collect all surfaces we want to render to.
             List<Surface> surfaceList = new ArrayList<>();
             surfaceList.add(flutterSurface);
             surfaceList.addAll(remainingSurfaces);
-            createCaptureSession(surfaceList, callback);
+            createCaptureSession(surfaceList, this);
         }
     }
 
