@@ -84,11 +84,11 @@ public class Camera extends CameraCaptureSession.StateCallback {
             captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
 
             // 自动对焦
-            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+            //captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
 
             // 固定对焦
-            //captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF);
-            //captureRequestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 10f);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF);
+            captureRequestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, 9f);
 
             if (recordingVideo) {
                 captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
@@ -392,10 +392,14 @@ public class Camera extends CameraCaptureSession.StateCallback {
             result.success(null);
             return;
         }
-
         try {
             recordingVideo = false;
-            mediaRecorder.stop();
+            try {
+                cameraCaptureSession.abortCaptures();
+                mediaRecorder.stop();
+            } catch (CameraAccessException | IllegalStateException e) {
+                // Ignore exceptions and try to continue (changes are camera session already aborted capture)
+            }
             mediaRecorder.reset();
             startPreview();
             result.success(null);
