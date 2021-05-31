@@ -53,6 +53,7 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
         {
           if (camera != null) {
             camera.close();
+            camera = null;
           }
           cameraPermissions.requestPermissions(
               activity,
